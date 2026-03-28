@@ -77,15 +77,15 @@
     }
   },
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
-    "electron-updater": "^6.1.7",
-    "echarts": "^5.5.0",
-    "leaflet": "^1.9.4",
-    "three": "^0.161.0",
-    "pdfmake": "^0.2.9",
-    "docx": "^8.5.0",
-    "sharp": "^0.33.2"
-  },
+        "sql.js": "^1.10.0",
+        "electron-updater": "^6.1.7",
+        "echarts": "^5.5.0",
+        "leaflet": "^1.9.4",
+        "three": "^0.161.0",
+        "pdfmake": "^0.2.9",
+        "docx": "^8.5.0",
+        "sharp": "^0.33.2"
+    },
   "devDependencies": {
     "electron": "^28.2.0",
     "electron-builder": "^24.9.1"

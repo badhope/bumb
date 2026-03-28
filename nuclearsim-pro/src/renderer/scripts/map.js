@@ -82,19 +82,24 @@ const MapHandler = {
 
             gaodeLayer.addTo(this.map);
 
-            this.cityMarkers = L.markerClusterGroup({
-                maxClusterRadius: 50,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false,
-                zoomToBoundsOnClick: true,
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div class="cluster-icon">' + cluster.getChildCount() + '</div>',
-                        className: 'city-cluster',
-                        iconSize: [40, 40]
-                    });
-                }
-            });
+            if (typeof L.markerClusterGroup === 'function') {
+                this.cityMarkers = L.markerClusterGroup({
+                    maxClusterRadius: 50,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false,
+                    zoomToBoundsOnClick: true,
+                    iconCreateFunction: function(cluster) {
+                        return L.divIcon({
+                            html: '<div class="cluster-icon">' + cluster.getChildCount() + '</div>',
+                            className: 'city-cluster',
+                            iconSize: [40, 40]
+                        });
+                    }
+                });
+            } else {
+                console.warn('MarkerCluster not loaded, using layerGroup instead');
+                this.cityMarkers = L.layerGroup();
+            }
 
             this.militaryMarkers = L.layerGroup();
 

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
 const { autoUpdater } = require('electron-updater');
 
 class NuclearSimApp {
@@ -9,12 +9,13 @@ class NuclearSimApp {
         this.mainWindow = null;
         this.db = null;
         this.isQuitting = false;
+        this.dbPath = null;
     }
 
     async init() {
         await app.whenReady();
         
-        this.initDatabase();
+        await this.initDatabase();
         this.createWindow();
         this.setupIPC();
         this.createMenu();
@@ -22,19 +23,33 @@ class NuclearSimApp {
         this.setupAppEvents();
     }
 
-    initDatabase() {
+    async initDatabase() {
         try {
-            const dbPath = path.join(app.getPath('userData'), 'nuclearsim.db');
-            console.log('Database path:', dbPath);
+            this.dbPath = path.join(app.getPath('userData'), 'nuclearsim.db');
+            console.log('Database path:', this.dbPath);
             
-            this.db = new Database(dbPath);
-            this.db.pragma('journal_mode = WAL');
+            const SQL = await initSqlJs();
+            
+            if (fs.existsSync(this.dbPath)) {
+                const buffer = fs.readFileSync(this.dbPath);
+                this.db = new SQL.Database(buffer);
+            } else {
+                this.db = new SQL.Database();
+            }
             
             this.createTables();
             console.log('Database initialized successfully');
         } catch (error) {
             console.error('Failed to initialize database:', error);
             dialog.showErrorBox('数据库错误', '无法初始化数据库: ' + error.message);
+        }
+    }
+
+    saveDatabase() {
+        if (this.db && this.dbPath) {
+            const data = this.db.export();
+            const buffer = Buffer.from(data);
+            fs.writeFileSync(this.dbPath, buffer);
         }
     }
 
@@ -292,7 +307,10 @@ class NuclearSimApp {
     setupIPC() {
         ipcMain.handle('db-run', (event, sql, params) => {
             try {
-                return this.db.prepare(sql).run(...(params || []));
+                this.db.run(sql, params || []);
+                this.saveDatabase();
+                const lastId = this.db.exec("SELECT last_insert_rowid() as id")[0]?.values[0]?.[0] || 0;
+                return { lastInsertRowid: lastId, changes: 1 };
             } catch (error) {
                 console.error('Database run error:', error);
                 throw error;
@@ -301,7 +319,15 @@ class NuclearSimApp {
 
         ipcMain.handle('db-get', (event, sql, params) => {
             try {
-                return this.db.prepare(sql).get(...(params || []));
+                const stmt = this.db.prepare(sql);
+                stmt.bind(params || []);
+                if (stmt.step()) {
+                    const row = stmt.getAsObject();
+                    stmt.free();
+                    return row;
+                }
+                stmt.free();
+                return null;
             } catch (error) {
                 console.error('Database get error:', error);
                 throw error;
@@ -310,7 +336,14 @@ class NuclearSimApp {
 
         ipcMain.handle('db-all', (event, sql, params) => {
             try {
-                return this.db.prepare(sql).all(...(params || []));
+                const stmt = this.db.prepare(sql);
+                stmt.bind(params || []);
+                const results = [];
+                while (stmt.step()) {
+                    results.push(stmt.getAsObject());
+                }
+                stmt.free();
+                return results;
             } catch (error) {
                 console.error('Database all error:', error);
                 throw error;

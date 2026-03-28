@@ -25,8 +25,12 @@ async function initApp() {
 }
 
 function initMap() {
-    mapHandler = new MapHandler('map');
-    mapHandler.init();
+    if (typeof MapHandler === 'undefined') {
+        console.error('MapHandler not loaded');
+        return;
+    }
+    MapHandler.init();
+    mapHandler = MapHandler;
 }
 
 function populateCitySelect() {

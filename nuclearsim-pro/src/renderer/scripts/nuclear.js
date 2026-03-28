@@ -2,52 +2,25 @@ const NuclearCalculator = {
     weaponPresets: {
         littleBoy: { yield: 15, name: '小男孩 (Little Boy)', year: 1945, country: '美国', description: '广岛原子弹，铀弹' },
         fatMan: { yield: 21, name: '胖子 (Fat Man)', year: 1945, country: '美国', description: '长崎原子弹，钚弹' },
+        tsarBomba: { yield: 50000, name: '沙皇炸弹 (Tsar Bomba)', year: 1961, country: '苏联', description: '人类史上最大核弹' },
         
         w76: { yield: 100, name: 'W76', year: 1978, country: '美国', description: '三叉戟导弹弹头' },
         w78: { yield: 335, name: 'W78', year: 1979, country: '美国', description: '民兵III导弹弹头' },
         w87: { yield: 300, name: 'W87', year: 1986, country: '美国', description: '和平卫士导弹弹头' },
         w88: { yield: 475, name: 'W88', year: 1989, country: '美国', description: '三叉戟II导弹弹头' },
-        b61: { yield: 50, name: 'B61', year: 1968, country: '美国', description: '战术核弹，可变当量' },
+        b61: { yield: 340, name: 'B61', year: 1968, country: '美国', description: '战术核弹，可变当量' },
         b83: { yield: 1200, name: 'B83', year: 1983, country: '美国', description: '美国现役最强核弹' },
-        w80: { yield: 150, name: 'W80', year: 1982, country: '美国', description: '巡航导弹弹头' },
         
-        tsar: { yield: 50000, name: '沙皇炸弹 (Tsar Bomba)', year: 1961, country: '苏联', description: '人类史上最大核弹' },
-        rds1: { yield: 22, name: 'RDS-1', year: 1949, country: '苏联', description: '苏联第一颗原子弹' },
-        rds37: { yield: 1600, name: 'RDS-37', year: 1955, country: '苏联', description: '苏联首颗氢弹' },
-        ss18: { yield: 24000, name: 'SS-18 撒旦', year: 1974, country: '苏联', description: '洲际导弹弹头' },
+        ss18: { yield: 20000, name: 'SS-18 撒旦', year: 1974, country: '苏联', description: '洲际导弹弹头' },
         topolM: { yield: 800, name: '白杨-M', year: 1997, country: '俄罗斯', description: '机动洲际导弹' },
-        
-        minuteman: { yield: 300, name: '民兵III (Minuteman III)', year: 1970, country: '美国', description: '陆基洲际导弹' },
-        trident: { yield: 100, name: '三叉戟II (Trident II)', year: 1990, country: '美国', description: '潜射弹道导弹' },
-        peacekeeper: { yield: 300, name: '和平卫士 (Peacekeeper)', year: 1986, country: '美国', description: '已退役洲际导弹' },
-        
-        df41: { yield: 300, name: '东风-41', year: 2019, country: '中国', description: '洲际弹道导弹' },
-        df31: { yield: 150, name: '东风-31AG', year: 2017, country: '中国', description: '机动洲际导弹' },
-        df5: { yield: 500, name: '东风-5B', year: 2015, country: '中国', description: '井基洲际导弹' },
-        jl2: { yield: 250, name: '巨浪-2', year: 2015, country: '中国', description: '潜射弹道导弹' },
-        q5: { yield: 20, name: '强-5核弹', year: 1972, country: '中国', description: '战术核航弹' },
-        
-        bulava: { yield: 150, name: '布拉瓦 (Bulava)', year: 2013, country: '俄罗斯', description: '潜射弹道导弹' },
-        yars: { yield: 500, name: '亚尔斯 (Yars)', year: 2010, country: '俄罗斯', description: '机动洲际导弹' },
         sarmat: { yield: 5000, name: '萨尔马特 (Sarmat)', year: 2022, country: '俄罗斯', description: '重型洲际导弹' },
         
-        blueDanube: { yield: 15, name: '蓝多瑙河', year: 1952, country: '英国', description: '英国第一颗原子弹' },
-        we177: { yield: 450, name: 'WE.177', year: 1966, country: '英国', description: '战术核弹' },
-        tridentUK: { yield: 100, name: '三叉戟(英)', year: 1994, country: '英国', description: '英国核威慑力量' },
-        
-        an52: { yield: 60, name: 'AN-52', year: 1974, country: '法国', description: '战术核弹' },
-        tn75: { yield: 100, name: 'TN-75', year: 1997, country: '法国', description: '潜射弹头' },
-        
-        agni5: { yield: 250, name: '烈火-5', year: 2018, country: '印度', description: '洲际弹道导弹' },
-        agni3: { yield: 60, name: '烈火-3', year: 2011, country: '印度', description: '中程弹道导弹' },
-        
-        ghauri: { yield: 30, name: '高里', year: 1998, country: '巴基斯坦', description: '中程弹道导弹' },
-        shaheen2: { yield: 35, name: '沙欣-2', year: 2004, country: '巴基斯坦', description: '中程弹道导弹' },
-        
-        hwasong15: { yield: 150, name: '火星-15', year: 2017, country: '朝鲜', description: '洲际弹道导弹' },
-        hwasong17: { yield: 250, name: '火星-17', year: 2022, country: '朝鲜', description: '洲际弹道导弹' },
+        df41: { yield: 300, name: '东风-41', year: 2019, country: '中国', description: '洲际弹道导弹' },
+        df31ag: { yield: 300, name: '东风-31AG', year: 2017, country: '中国', description: '机动洲际导弹' },
+        jl2: { yield: 250, name: '巨浪-2', year: 2015, country: '中国', description: '潜射弹道导弹' },
         
         davyCrockett: { yield: 0.02, name: '大卫·克罗克特', year: 1961, country: '美国', description: '最小核武器，20吨当量' },
+        w54: { yield: 0.01, name: 'W54微型弹头', year: 1961, country: '美国', description: '最小核弹头，10吨当量' },
         sADM: { yield: 0.01, name: 'SADM', year: 1964, country: '美国', description: '背包核弹，10吨当量' },
         w54: { yield: 0.001, name: 'W54', year: 1961, country: '美国', description: '微型核弹头，1吨当量' },
         
