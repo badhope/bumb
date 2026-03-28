@@ -1,439 +1,265 @@
 const MapHandler = {
-    svg: null,
-    mapGroup: null,
-    countriesGroup: null,
-    citiesGroup: null,
-    labelsGroup: null,
-    impactGroup: null,
-    width: 1000,
-    height: 500,
-    scale: 1,
-    translateX: 0,
-    translateY: 0,
-    selectedCity: null,
+    map: null,
+    targetMarker: null,
+    impactCircles: [],
     selectedCoords: null,
-    showLabels: true,
-    hoveredCountry: null,
-
-    projection(lat, lng) {
-        const x = (lng + 180) * (this.width / 360);
-        const latRad = lat * Math.PI / 180;
-        const mercN = Math.log(Math.tan((Math.PI / 4) + (latRad / 2)));
-        const y = (this.height / 2) - (this.width * mercN / (2 * Math.PI));
-        
-        return {
-            x: x * this.scale + this.translateX,
-            y: y * this.scale + this.translateY
-        };
-    },
-
+    selectedCity: null,
+    
     init() {
-        this.svg = document.getElementById('worldMap');
-        this.mapGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.countriesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.citiesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.labelsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        this.impactGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        
-        this.svg.appendChild(this.mapGroup);
-        this.svg.appendChild(this.countriesGroup);
-        this.svg.appendChild(this.impactGroup);
-        this.svg.appendChild(this.citiesGroup);
-        this.svg.appendChild(this.labelsGroup);
-        
-        this.drawGrid();
-        this.drawCountries();
-        this.drawCities();
-        this.setupControls();
-        this.setupClickHandler();
-    },
-
-    drawGrid() {
-        for (let lat = -60; lat <= 80; lat += 20) {
-            const y = (this.height / 2) - (this.width * Math.log(Math.tan(Math.PI/4 + lat * Math.PI/360)) / (2 * Math.PI));
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', 0);
-            line.setAttribute('y1', y);
-            line.setAttribute('x2', this.width);
-            line.setAttribute('y2', y);
-            line.setAttribute('stroke', 'rgba(255,255,255,0.03)');
-            line.setAttribute('stroke-width', '0.5');
-            this.mapGroup.appendChild(line);
-        }
-        
-        for (let lng = -180; lng <= 180; lng += 30) {
-            const x = (lng + 180) * (this.width / 360);
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', x);
-            line.setAttribute('y1', 0);
-            line.setAttribute('x2', x);
-            line.setAttribute('y2', this.height);
-            line.setAttribute('stroke', 'rgba(255,255,255,0.03)');
-            line.setAttribute('stroke-width', '0.5');
-            this.mapGroup.appendChild(line);
-        }
-    },
-
-    drawCountries() {
-        WorldMapData.countries.forEach(country => {
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', country.path);
-            path.setAttribute('class', 'country-path');
-            path.setAttribute('data-country-id', country.id);
-            path.setAttribute('data-country-name', country.name);
-            path.setAttribute('fill', this.getCountryColor(country.id));
-            path.setAttribute('stroke', 'rgba(255,255,255,0.15)');
-            path.setAttribute('stroke-width', '0.5');
-            path.setAttribute('cursor', 'pointer');
-            
-            path.addEventListener('mouseenter', (e) => {
-                this.hoveredCountry = country;
-                path.setAttribute('fill', this.getCountryColor(country.id, true));
-                this.showTooltip(e, country.name);
-            });
-            
-            path.addEventListener('mouseleave', () => {
-                this.hoveredCountry = null;
-                path.setAttribute('fill', this.getCountryColor(country.id));
-                this.hideTooltip();
-            });
-            
-            path.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-            
-            this.countriesGroup.appendChild(path);
+        this.map = L.map('map', {
+            center: [35, 105],
+            zoom: 4,
+            minZoom: 2,
+            maxZoom: 18,
+            worldCopyJump: true
         });
-    },
 
-    getCountryColor(countryId, isHovered = false) {
-        const colors = {
-            CN: '#2d5a4a',
-            RU: '#3d4a5a',
-            US: '#4a3d5a',
-            JP: '#5a4a3d',
-            KR: '#4a5a3d',
-            KP: '#5a3d4a',
-            IN: '#3d5a4a',
-            GB: '#4a4a5a',
-            FR: '#5a5a3d',
-            DE: '#3d3d5a',
-            BR: '#5a3d3d',
-            AU: '#3d5a5a',
-            CA: '#4a5a5a',
-            default: '#2d4a3e'
+        const gaodeLayer = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            subdomains: ['1', '2', '3', '4'],
+            attribution: '&copy; 高德地图',
+            maxZoom: 18
+        });
+
+        const gaodeSatellite = L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
+            subdomains: ['1', '2', '3', '4'],
+            attribution: '&copy; 高德地图',
+            maxZoom: 18
+        });
+
+        const gaodeSatelliteLabel = L.layerGroup([
+            gaodeSatellite,
+            L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}', {
+                subdomains: ['1', '2', '3', '4']
+            })
+        ]);
+
+        const geoqLayer = L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineCommunity/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; GeoQ',
+            maxZoom: 16
+        });
+
+        const geoqDarkLayer = L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplish/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; GeoQ',
+            maxZoom: 16
+        });
+
+        gaodeLayer.addTo(this.map);
+
+        const baseLayers = {
+            '高德地图': gaodeLayer,
+            '高德卫星': gaodeSatelliteLabel,
+            'GeoQ 彩色版': geoqLayer,
+            'GeoQ 深色版': geoqDarkLayer
         };
-        
-        let baseColor = colors[countryId] || colors.default;
-        
-        if (isHovered) {
-            return this.lightenColor(baseColor, 30);
-        }
-        
-        return baseColor;
-    },
 
-    lightenColor(hex, percent) {
-        const num = parseInt(hex.replace('#', ''), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = (num >> 16) + amt;
-        const G = (num >> 8 & 0x00FF) + amt;
-        const B = (num & 0x0000FF) + amt;
-        
-        return '#' + (0x1000000 +
-            (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-            (B < 255 ? B < 1 ? 0 : B : 255)
-        ).toString(16).slice(1);
-    },
+        L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
 
-    drawCities() {
-        const majorCities = WorldCities.filter(c => c.population > 5000000);
-        const otherCities = WorldCities.filter(c => c.population <= 5000000);
-        
-        otherCities.forEach(city => {
-            this.drawCityMarker(city, 'small');
+        this.createTargetIcon();
+
+        this.map.on('click', (e) => {
+            this.selectLocation(e.latlng.lat, e.latlng.lng);
         });
-        
-        majorCities.forEach(city => {
-            this.drawCityMarker(city, 'large');
+
+        console.log('MapHandler initialized');
+    },
+
+    createTargetIcon() {
+        this.targetIcon = L.divIcon({
+            className: 'target-marker',
+            html: '<div class="target-cross">+</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
         });
     },
 
-    drawCityMarker(city, size) {
-        const pos = this.projection(city.lat, city.lng);
-        
-        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        marker.setAttribute('cx', pos.x);
-        marker.setAttribute('cy', pos.y);
-        marker.setAttribute('r', size === 'large' ? 3 : 2);
-        marker.setAttribute('class', 'city-marker');
-        marker.setAttribute('data-city', city.name);
-        marker.setAttribute('data-country', city.country);
-        marker.setAttribute('data-lat', city.lat);
-        marker.setAttribute('data-lng', city.lng);
-        marker.setAttribute('data-population', city.population);
-        marker.setAttribute('data-density', city.density);
-        marker.setAttribute('fill', size === 'large' ? '#ffd93d' : '#ffaa00');
-        marker.setAttribute('stroke', 'rgba(255,255,255,0.5)');
-        marker.setAttribute('stroke-width', '0.5');
-        marker.setAttribute('cursor', 'pointer');
-        
-        marker.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.selectCity(city);
+    flyTo(lat, lng, zoom = 10) {
+        console.log('Flying to:', lat, lng);
+        this.map.flyTo([lat, lng], zoom, {
+            duration: 1.5
         });
-        
-        marker.addEventListener('mouseenter', (e) => {
-            marker.setAttribute('r', size === 'large' ? 5 : 4);
-            this.showTooltip(e, `${city.name}, ${city.country}\n人口: ${NuclearCalculator.formatNumber(city.population)}`);
-        });
-        
-        marker.addEventListener('mouseleave', () => {
-            marker.setAttribute('r', size === 'large' ? 3 : 2);
-            this.hideTooltip();
-        });
-        
-        this.citiesGroup.appendChild(marker);
-        
-        if (size === 'large' || city.population > 10000000) {
-            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            label.setAttribute('x', pos.x);
-            label.setAttribute('y', pos.y - 6);
-            label.setAttribute('class', 'city-label');
-            label.setAttribute('text-anchor', 'middle');
-            label.setAttribute('font-size', '7px');
-            label.setAttribute('fill', 'rgba(255,255,255,0.8)');
-            label.setAttribute('pointer-events', 'none');
-            label.textContent = city.name;
-            this.labelsGroup.appendChild(label);
-        }
-    },
-
-    showTooltip(e, text) {
-        let tooltip = document.getElementById('mapTooltip');
-        if (!tooltip) {
-            tooltip = document.createElement('div');
-            tooltip.id = 'mapTooltip';
-            tooltip.style.cssText = `
-                position: absolute;
-                background: rgba(0,0,0,0.85);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 5px;
-                font-size: 12px;
-                pointer-events: none;
-                z-index: 1000;
-                white-space: pre-line;
-                border: 1px solid rgba(255,255,255,0.2);
-            `;
-            document.body.appendChild(tooltip);
-        }
-        
-        tooltip.textContent = text;
-        tooltip.style.left = (e.clientX + 15) + 'px';
-        tooltip.style.top = (e.clientY + 15) + 'px';
-        tooltip.style.display = 'block';
-    },
-
-    hideTooltip() {
-        const tooltip = document.getElementById('mapTooltip');
-        if (tooltip) {
-            tooltip.style.display = 'none';
-        }
     },
 
     selectCity(city) {
+        console.log('Selecting city:', city.name, city.lat, city.lng);
+        
         this.selectedCity = city;
         this.selectedCoords = { lat: city.lat, lng: city.lng };
         
-        document.querySelectorAll('.city-marker').forEach(m => {
-            const isSelected = m.getAttribute('data-city') === city.name;
-            const isLarge = m.getAttribute('r') >= 3;
-            m.setAttribute('r', isSelected ? (isLarge ? 6 : 5) : (isLarge ? 3 : 2));
-            m.setAttribute('stroke', isSelected ? '#ff6b6b' : 'rgba(255,255,255,0.5)');
-            m.setAttribute('stroke-width', isSelected ? 2 : 0.5);
+        if (this.targetMarker) {
+            this.map.removeLayer(this.targetMarker);
+        }
+
+        this.targetMarker = L.marker([city.lat, city.lng], {
+            icon: this.targetIcon,
+            zIndexOffset: 1000
+        }).addTo(this.map);
+
+        this.map.flyTo([city.lat, city.lng], 10, {
+            duration: 1.5
         });
-        
-        const citySelect = document.getElementById('citySelect');
-        citySelect.value = city.name;
-        
-        document.getElementById('population').value = city.density;
-        
-        this.showExplosionMarker(city.lat, city.lng);
+
+        this.updateCoordDisplay(city.lat, city.lng, city.name);
+
+        const countryCode = this.getCountryCode(city.country);
+        const countryData = countryCode ? window.CountryData[countryCode] : null;
         
         if (window.App) {
-            App.onCitySelected(city);
+            window.App.updateCountryInfo(countryData, city);
         }
     },
 
-    selectCoords(lat, lng) {
+    selectLocation(lat, lng) {
+        console.log('Selecting location:', lat, lng);
+        
         this.selectedCity = null;
         this.selectedCoords = { lat, lng };
-        
-        document.querySelectorAll('.city-marker').forEach(m => {
-            const isLarge = parseFloat(m.getAttribute('r')) >= 3;
-            m.setAttribute('r', isLarge ? 3 : 2);
-            m.setAttribute('stroke', 'rgba(255,255,255,0.5)');
-            m.setAttribute('stroke-width', 0.5);
-        });
-        
-        document.getElementById('citySelect').value = '';
-        
-        this.showExplosionMarker(lat, lng);
+
+        if (this.targetMarker) {
+            this.map.removeLayer(this.targetMarker);
+        }
+
+        this.targetMarker = L.marker([lat, lng], {
+            icon: this.targetIcon,
+            zIndexOffset: 1000
+        }).addTo(this.map);
+
+        this.updateCoordDisplay(lat, lng, '自定义位置');
+
+        const countryCode = this.getCountryByCoords(lat, lng);
+        const countryData = countryCode ? window.CountryData[countryCode] : null;
+
+        if (window.App) {
+            window.App.updateCountryInfo(countryData, {
+                name: '自定义目标',
+                lat, lng
+            });
+        }
     },
 
-    showExplosionMarker(lat, lng) {
-        const pos = this.projection(lat, lng);
-        const marker = document.getElementById('explosionMarker');
-        const mapContainer = document.querySelector('.map-container');
-        const rect = mapContainer.getBoundingClientRect();
-        const svgRect = this.svg.getBoundingClientRect();
+    updateCoordDisplay(lat, lng, name) {
+        const latEl = document.getElementById('targetLat');
+        const lngEl = document.getElementById('targetLng');
+        const nameEl = document.getElementById('targetName');
         
-        const scaleX = svgRect.width / this.width;
-        const scaleY = svgRect.height / this.height;
+        if (latEl) latEl.textContent = lat.toFixed(4);
+        if (lngEl) lngEl.textContent = lng.toFixed(4);
+        if (nameEl) nameEl.textContent = name;
+
+        const toast = document.getElementById('coordToast');
+        const toastLat = document.getElementById('toastLat');
+        const toastLng = document.getElementById('toastLng');
         
-        marker.style.left = (pos.x * scaleX) + 'px';
-        marker.style.top = (pos.y * scaleY) + 'px';
-        marker.style.display = 'block';
+        if (toast && toastLat && toastLng) {
+            toastLat.textContent = lat.toFixed(4);
+            toastLng.textContent = lng.toFixed(4);
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    },
+
+    getCountryCode(countryName) {
+        const countryMap = {
+            '中国': 'CN', '日本': 'JP', '韩国': 'KR', '朝鲜': 'KP',
+            '印度': 'IN', '巴基斯坦': 'PK', '孟加拉国': 'BD', '印度尼西亚': 'ID',
+            '泰国': 'TH', '越南': 'VN', '菲律宾': 'PH', '马来西亚': 'MY',
+            '新加坡': 'SG', '缅甸': 'MM', '柬埔寨': 'KH', '老挝': 'LA',
+            '美国': 'US', '加拿大': 'CA', '墨西哥': 'MX', '巴西': 'BR',
+            '阿根廷': 'AR', '智利': 'CL', '哥伦比亚': 'CO', '秘鲁': 'PE',
+            '英国': 'GB', '法国': 'FR', '德国': 'DE', '意大利': 'IT',
+            '西班牙': 'ES', '波兰': 'PL', '荷兰': 'NL', '比利时': 'BE',
+            '瑞士': 'CH', '瑞典': 'SE', '挪威': 'NO', '丹麦': 'DK',
+            '芬兰': 'FI', '奥地利': 'AT', '希腊': 'GR', '葡萄牙': 'PT',
+            '俄罗斯': 'RU', '乌克兰': 'UA', '白俄罗斯': 'BY', '哈萨克斯坦': 'KZ',
+            '乌兹别克斯坦': 'UZ', '土耳其': 'TR', '伊朗': 'IR', '伊拉克': 'IQ',
+            '沙特阿拉伯': 'SA', '阿联酋': 'AE', '以色列': 'IL', '埃及': 'EG',
+            '南非': 'ZA', '尼日利亚': 'NG', '埃塞俄比亚': 'ET', '肯尼亚': 'KE',
+            '澳大利亚': 'AU', '新西兰': 'NZ'
+        };
+        return countryMap[countryName] || null;
+    },
+
+    getCountryByCoords(lat, lng) {
+        if (lat >= 18 && lat <= 54 && lng >= 73 && lng <= 135) return 'CN';
+        if (lat >= 30 && lat <= 46 && lng >= 129 && lng <= 146) return 'JP';
+        if (lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132) return 'KR';
+        if (lat >= 38 && lat <= 43 && lng >= 124 && lng <= 131) return 'KP';
+        if (lat >= 6 && lat <= 36 && lng >= 68 && lng <= 98) return 'IN';
+        if (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66) return 'US';
+        if (lat >= 41 && lat <= 83 && lng >= -141 && lng <= -52) return 'CA';
+        if (lat >= 35 && lat <= 72 && lng >= -10 && lng <= 60) return 'EU';
+        if (lat >= 41 && lat <= 82 && lng >= 19 && lng <= 180) return 'RU';
+        if (lat >= -44 && lat <= -10 && lng >= 113 && lng <= 154) return 'AU';
+        return null;
     },
 
     drawImpactCircles(results) {
-        while (this.impactGroup.firstChild) {
-            this.impactGroup.removeChild(this.impactGroup.firstChild);
-        }
+        this.clearImpactCircles();
 
         if (!this.selectedCoords) return;
 
-        const center = this.projection(this.selectedCoords.lat, this.selectedCoords.lng);
-        
-        const kmToPixels = (km) => km * 8 * this.scale;
+        const lat = this.selectedCoords.lat;
+        const lng = this.selectedCoords.lng;
 
         const circles = [
-            { radius: results.electromagnetic, class: 'impact-emp', label: 'EMP', color: '#00bfff' },
-            { radius: results.radiation, class: 'impact-radiation', label: '辐射', color: '#9400d3' },
-            { radius: results.thermal, class: 'impact-thermal', label: '热辐射', color: '#ff6347' },
-            { radius: results.lightBlast, class: 'impact-light', label: '轻度破坏', color: '#ffd700' },
-            { radius: results.moderateBlast, class: 'impact-moderate', label: '中度破坏', color: '#ff8c00' },
-            { radius: results.heavyBlast, class: 'impact-heavy', label: '重度破坏', color: '#ff4500' },
-            { radius: results.fireball, class: 'impact-fireball', label: '火球', color: '#ff0000' }
+            { radius: results.electromagnetic, color: '#00bfff', opacity: 0.2, name: 'EMP' },
+            { radius: results.radiation, color: '#9400d3', opacity: 0.3, name: '辐射' },
+            { radius: results.thermal, color: '#ff6347', opacity: 0.35, name: '热辐射' },
+            { radius: results.lightBlast, color: '#ffd700', opacity: 0.4, name: '轻度破坏' },
+            { radius: results.moderateBlast, color: '#ff8c00', opacity: 0.45, name: '中度破坏' },
+            { radius: results.heavyBlast, color: '#ff4500', opacity: 0.5, name: '重度破坏' },
+            { radius: results.fireball, color: '#ff0000', opacity: 0.7, name: '火球' }
         ];
 
         circles.forEach(c => {
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', center.x);
-            circle.setAttribute('cy', center.y);
-            circle.setAttribute('r', kmToPixels(c.radius));
-            circle.setAttribute('fill', 'none');
-            circle.setAttribute('stroke', c.color);
-            circle.setAttribute('stroke-width', 2);
-            circle.setAttribute('stroke-dasharray', c.class === 'impact-emp' ? '5,5' : 'none');
-            circle.setAttribute('opacity', '0.7');
-            this.impactGroup.appendChild(circle);
+            if (c.radius > 0) {
+                const circle = L.circle([lat, lng], {
+                    radius: c.radius * 1000,
+                    color: c.color,
+                    fillColor: c.color,
+                    fillOpacity: c.opacity,
+                    weight: 2,
+                    className: 'impact-circle'
+                }).addTo(this.map);
+
+                circle.bindTooltip(`${c.name}: ${c.radius.toFixed(2)} km`, {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'impact-tooltip'
+                });
+
+                this.impactCircles.push(circle);
+            }
         });
+
+        const maxRadius = results.electromagnetic || results.radiation || results.thermal;
+        const bounds = L.circle([lat, lng], { radius: maxRadius * 1000 }).getBounds();
+        this.map.fitBounds(bounds, { padding: [50, 50] });
     },
 
     clearImpactCircles() {
-        while (this.impactGroup.firstChild) {
-            this.impactGroup.removeChild(this.impactGroup.firstChild);
+        this.impactCircles.forEach(circle => {
+            this.map.removeLayer(circle);
+        });
+        this.impactCircles = [];
+    },
+
+    formatPopulation(pop) {
+        if (pop >= 10000000) {
+            return (pop / 10000000).toFixed(1) + '千万';
+        } else if (pop >= 10000) {
+            return (pop / 10000).toFixed(0) + '万';
         }
+        return pop.toLocaleString();
     },
 
-    setupControls() {
-        document.getElementById('zoomIn').addEventListener('click', () => {
-            this.scale *= 1.3;
-            this.updateTransform();
-        });
-
-        document.getElementById('zoomOut').addEventListener('click', () => {
-            this.scale = Math.max(0.5, this.scale / 1.3);
-            this.updateTransform();
-        });
-
-        document.getElementById('resetView').addEventListener('click', () => {
-            this.scale = 1;
-            this.translateX = 0;
-            this.translateY = 0;
-            this.updateTransform();
-        });
-
-        let isDragging = false;
-        let startX, startY;
-
-        this.svg.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('city-marker')) return;
-            isDragging = true;
-            startX = e.clientX - this.translateX;
-            startY = e.clientY - this.translateY;
-            this.svg.style.cursor = 'grabbing';
-        });
-
-        this.svg.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                this.translateX = e.clientX - startX;
-                this.translateY = e.clientY - startY;
-                this.updateTransform();
-            }
-        });
-
-        this.svg.addEventListener('mouseup', () => {
-            isDragging = false;
-            this.svg.style.cursor = 'grab';
-        });
-
-        this.svg.addEventListener('mouseleave', () => {
-            isDragging = false;
-            this.svg.style.cursor = 'grab';
-        });
-
-        this.svg.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            const newScale = this.scale * delta;
-            
-            if (newScale >= 0.5 && newScale <= 5) {
-                this.scale = newScale;
-                this.updateTransform();
-            }
-        });
-    },
-
-    setupClickHandler() {
-        this.svg.addEventListener('click', (e) => {
-            if (e.target.classList.contains('city-marker') || 
-                e.target.classList.contains('country-path')) return;
-            
-            const rect = this.svg.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width * this.width;
-            const y = (e.clientY - rect.top) / rect.height * this.height;
-            
-            const lng = (x / this.scale - this.translateX / this.scale) * (360 / this.width) - 180;
-            const mercN = (this.height / 2 - y / this.scale + this.translateY / this.scale) * (2 * Math.PI / this.width);
-            const lat = (2 * Math.atan(Math.exp(mercN)) - Math.PI / 2) * 180 / Math.PI;
-            
-            this.selectCoords(lat, lng);
-        });
-    },
-
-    updateTransform() {
-        const transform = `translate(${this.translateX}, ${this.translateY}) scale(${this.scale})`;
-        this.mapGroup.setAttribute('transform', transform);
-        this.countriesGroup.setAttribute('transform', transform);
-        this.citiesGroup.setAttribute('transform', transform);
-        this.labelsGroup.setAttribute('transform', transform);
-        this.impactGroup.setAttribute('transform', transform);
+    searchCities(query) {
+        if (!query || query.length < 1 || !window.CitiesData) return [];
         
-        const labelOpacity = this.scale > 1.2 ? 1 : (this.scale > 0.8 ? 0.7 : 0.4);
-        this.labelsGroup.setAttribute('opacity', labelOpacity);
-        
-        if (this.selectedCoords) {
-            this.showExplosionMarker(this.selectedCoords.lat, this.selectedCoords.lng);
-        }
-    },
-
-    toggleLabels() {
-        this.showLabels = !this.showLabels;
-        this.labelsGroup.style.display = this.showLabels ? 'block' : 'none';
+        const q = query.toLowerCase();
+        return window.CitiesData.filter(city => 
+            city.name.toLowerCase().includes(q) ||
+            city.country.toLowerCase().includes(q)
+        ).slice(0, 10);
     }
 };
 

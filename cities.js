@@ -63,3 +63,4 @@ const WorldCities = [
 ];
 
 window.WorldCities = WorldCities;
+window.CitiesData = WorldCities;
