@@ -331,6 +331,27 @@ body {
     transform: translateY(0);
 }
 
+.global-war-btn {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--accent-primary);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent-primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.global-war-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px var(--shadow-color);
+}
+
 .event-list,
 .story-list,
 .knowledge-list,

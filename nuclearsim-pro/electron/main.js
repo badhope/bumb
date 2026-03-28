@@ -192,6 +192,11 @@ class NuclearSimApp {
                         click: () => this.mainWindow.webContents.send('menu-new-simulation')
                     },
                     {
+                        label: '全球核战争模拟',
+                        accelerator: 'CmdOrCtrl+G',
+                        click: () => this.openGlobalWarWindow()
+                    },
+                    {
                         label: '保存场景',
                         accelerator: 'CmdOrCtrl+S',
                         click: () => this.mainWindow.webContents.send('menu-save-scenario')
@@ -505,6 +510,33 @@ class NuclearSimApp {
             message: 'NuclearSim Pro v' + app.getVersion(),
             detail: '专业级核武器效应模拟器\n\n用于教育和研究目的\n\n© 2026 NuclearSim Team\n\n本模拟器基于公开的物理模型和历史数据，结果仅供参考。'
         });
+    }
+    
+    openGlobalWarWindow() {
+        const globalWarWindow = new BrowserWindow({
+            width: 1600,
+            height: 900,
+            minWidth: 1200,
+            minHeight: 700,
+            frame: false,
+            titleBarStyle: 'hiddenInset',
+            backgroundColor: '#1a1a2e',
+            icon: path.join(__dirname, '../assets/icons/icon.png'),
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: path.join(__dirname, 'preload.js'),
+                webSecurity: true,
+                enableRemoteModule: false
+            },
+            title: '全球核战争模拟器'
+        });
+        
+        globalWarWindow.loadFile(path.join(__dirname, '../src/renderer/global-war.html'));
+        
+        if (process.env.NODE_ENV === 'development') {
+            globalWarWindow.webContents.openDevTools();
+        }
     }
 }
 

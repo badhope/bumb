@@ -909,6 +909,18 @@ window.saveSimulation = saveSimulation;
 window.setTool = setTool;
 window.toggleMilitaryBases = toggleMilitaryBases;
 window.toggleLayers = toggleLayers;
+window.openGlobalWarSimulator = openGlobalWarSimulator;
+
+function openGlobalWarSimulator() {
+    if (window.electronAPI && window.electronAPI.window) {
+        showNotification('正在打开全球核战争模拟器...', 'info');
+        setTimeout(() => {
+            window.location.href = 'global-war.html';
+        }, 500);
+    } else {
+        window.location.href = 'global-war.html';
+    }
+}
 
 window.App = {
     updateCountryInfo,
