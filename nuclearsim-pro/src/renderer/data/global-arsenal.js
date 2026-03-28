@@ -45,7 +45,7 @@ const GlobalNuclearArsenal = {
                             name: 'UGM-133A 三叉戟II D5',
                             nameEn: 'Trident II D5',
                             count: 280,
-                            warheadsPerMissile:: 4,
+                            warheadsPerMissile: 4,
                             warheadType: 'W76-1/W76-2/W88',
                             yield: [100, 8, 455],
                             range: 12000,
@@ -663,17 +663,6 @@ const GlobalNuclearArsenal = {
         
         for (const systemType of Object.values(country.deliverySystems)) {
             for (const system of systemType.systems) {
-                if (system.bases) {
-                    for (const base of system.bases) {
-                        targets.push({
-                            name: base.name,
-                            lat: base.lat,
-                            lng: base.lng,
-                            type: 'base',
-                            system: system.name
-                        });
-                    }
-                }
                 if (system.locations) {
                     for (const loc of system.locations) {
                         targets.push({
@@ -686,16 +675,31 @@ const GlobalNuclearArsenal = {
                         });
                     }
                 }
-                if (system.submarines) {
-                    for (const sub of system.submarines) {
-                        if (sub.homePort) {
+                if (system.bases && system.bases.length > 0 && typeof system.bases[0] === 'object') {
+                    for (const base of system.bases) {
+                        if (base.lat && base.lng) {
                             targets.push({
-                                name: sub.homePort.name,
-                                lat: sub.homePort.lat,
-                                lng: sub.homePort.lng,
-                                type: 'submarine_base',
+                                name: base.name,
+                                lat: base.lat,
+                                lng: base.lng,
+                                type: 'base',
                                 system: system.name
                             });
+                        }
+                    }
+                }
+                if (system.submarines) {
+                    for (const sub of system.submarines) {
+                        if (sub.homePorts) {
+                            for (const port of sub.homePorts) {
+                                targets.push({
+                                    name: port.name,
+                                    lat: port.lat,
+                                    lng: port.lng,
+                                    type: 'submarine_base',
+                                    system: system.name
+                                });
+                            }
                         }
                     }
                 }

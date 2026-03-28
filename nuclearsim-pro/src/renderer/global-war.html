@@ -18,9 +18,9 @@
                 <span class="app-version">Pro Edition</span>
             </div>
             <div class="title-bar-controls">
-                <button class="title-bar-btn minimize" onclick="electronAPI.window.minimize()">─</button>
-                <button class="title-bar-btn maximize" onclick="electronAPI.window.maximize()">□</button>
-                <button class="title-bar-btn close" onclick="electronAPI.window.close()">✕</button>
+                <button class="title-bar-btn minimize" onclick="window.electronAPI?.window?.minimize?.() || window.close()">─</button>
+                <button class="title-bar-btn maximize" onclick="window.electronAPI?.window?.maximize?.() || console.log('maximize')">□</button>
+                <button class="title-bar-btn close" onclick="window.electronAPI?.window?.close?.() || window.close()">✕</button>
             </div>
         </div>
 

@@ -294,9 +294,10 @@ function runSimulation() {
         
         const target = targets[missileIndex];
         
-        const originBases = attacker.deliverySystems.icbm?.systems[0]?.bases || 
-                           attacker.deliverySystems.icbm?.systems[0]?.locations ||
-                           [{ lat: 40, lng: -100, name: 'Unknown' }];
+        let originBases = attacker.deliverySystems.icbm?.systems[0]?.locations || [];
+        if (originBases.length === 0) {
+            originBases = [{ name: '发射基地', lat: 40, lng: -100 }];
+        }
         const origin = originBases[Math.floor(Math.random() * originBases.length)];
         
         const missile = GlobalWarSimulator.simulateMissileLaunch({
@@ -330,15 +331,17 @@ function selectTargetsForPhase(defender, type, count) {
     
     if (type === 'counterforce' || type === 'mixed') {
         const arsenalTargets = GlobalNuclearArsenal.getAllTargets(defenderCode);
-        for (let i = 0; i < Math.min(count/2, arsenalTargets.length); i++) {
-            const t = arsenalTargets[i];
-            targets.push({
-                name: t.name,
-                lat: t.lat,
-                lng: t.lng,
-                type: t.type,
-                populationDensity: 100
-            });
+        if (arsenalTargets.length > 0) {
+            for (let i = 0; i < Math.min(count/2, arsenalTargets.length); i++) {
+                const t = arsenalTargets[i];
+                targets.push({
+                    name: t.name,
+                    lat: t.lat,
+                    lng: t.lng,
+                    type: t.type,
+                    populationDensity: 100
+                });
+            }
         }
     }
     
@@ -349,16 +352,36 @@ function selectTargetsForPhase(defender, type, count) {
         const startIdx = type === 'mixed' ? targets.length : 0;
         const targetCount = type === 'mixed' ? count - targets.length : count;
         
-        for (let i = 0; i < Math.min(targetCount, sortedCities.length); i++) {
-            const city = sortedCities[i];
-            targets.push({
-                name: city.name,
-                lat: city.lat,
-                lng: city.lng,
-                type: 'city',
-                populationDensity: city.density || 5000
-            });
+        if (sortedCities.length > 0) {
+            for (let i = 0; i < Math.min(targetCount, sortedCities.length); i++) {
+                const city = sortedCities[i];
+                targets.push({
+                    name: city.name,
+                    lat: city.lat,
+                    lng: city.lng,
+                    type: 'city',
+                    populationDensity: city.density || 5000
+                });
+            }
+        } else {
+            const fallbackTargets = [
+                { name: '目标城市1', lat: 39.9, lng: 116.4, populationDensity: 5000 },
+                { name: '目标城市2', lat: 31.2, lng: 121.5, populationDensity: 4000 },
+                { name: '目标城市3', lat: 23.1, lng: 113.3, populationDensity: 3000 }
+            ];
+            for (let i = 0; i < Math.min(targetCount, fallbackTargets.length); i++) {
+                targets.push(fallbackTargets[i]);
+            }
         }
+    }
+    
+    if (targets.length === 0) {
+        const defaultTargets = [
+            { name: '默认目标1', lat: 39.9, lng: 116.4, populationDensity: 5000 },
+            { name: '默认目标2', lat: 31.2, lng: 121.5, populationDensity: 4000 },
+            { name: '默认目标3', lat: 23.1, lng: 113.3, populationDensity: 3000 }
+        ];
+        return defaultTargets.slice(0, Math.min(count, defaultTargets.length));
     }
     
     return targets;
@@ -392,7 +415,8 @@ function animateMissile(missile) {
         
         const speed = parseFloat(document.getElementById('simSpeed').value);
         const steps = 50;
-        const stepTime = (missile.flightTime * 1000) / steps / speed;
+        const baseStepTime = (missile.flightTime * 1000) / steps / speed;
+        const stepTime = Math.min(baseStepTime, 100);
         let currentStep = 0;
         
         const moveMissile = setInterval(() => {
