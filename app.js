@@ -1,9 +1,14 @@
+/**
+ * App.js - 主应用控制器 (优化版)
+ * 修复：错误处理、初始化流程、跨平台兼容
+ */
+
 const App = {
     currentCountryData: null,
     lastSimulationResult: null,
     initialized: false,
     initRetryCount: 0,
-    maxInitRetries: 10,
+    maxInitRetries: 15,
 
     init() {
         if (this.initialized) {
@@ -12,7 +17,6 @@ const App = {
         }
 
         console.log('App initializing...');
-
         this.waitForDependencies();
     },
 
@@ -21,23 +25,34 @@ const App = {
         
         if (this.initRetryCount > this.maxInitRetries) {
             console.error('App: Max initialization retries reached');
+            this.showNotification('应用初始化超时，请刷新页面', 'error');
             return;
         }
 
+        // 检查 Leaflet
         if (typeof L === 'undefined') {
             console.log(`App: Waiting for Leaflet... (${this.initRetryCount}/${this.maxInitRetries})`);
             setTimeout(() => this.waitForDependencies(), 100);
             return;
         }
 
-        if (!window.CitiesData) {
+        // 检查城市数据
+        if (!window.CitiesData || !Array.isArray(window.CitiesData)) {
             console.log(`App: Waiting for CitiesData... (${this.initRetryCount}/${this.maxInitRetries})`);
             setTimeout(() => this.waitForDependencies(), 100);
             return;
         }
 
-        if (!window.CountryData) {
+        // 检查国家数据
+        if (!window.CountryData || typeof window.CountryData !== 'object') {
             console.log(`App: Waiting for CountryData... (${this.initRetryCount}/${this.maxInitRetries})`);
+            setTimeout(() => this.waitForDependencies(), 100);
+            return;
+        }
+
+        // 检查核计算器
+        if (!window.NuclearCalculator) {
+            console.log(`App: Waiting for NuclearCalculator... (${this.initRetryCount}/${this.maxInitRetries})`);
             setTimeout(() => this.waitForDependencies(), 100);
             return;
         }
@@ -48,6 +63,7 @@ const App = {
     doInit() {
         if (!window.MapHandler) {
             console.error('MapHandler not loaded');
+            this.showNotification('地图处理器加载失败', 'error');
             return;
         }
 
@@ -55,6 +71,7 @@ const App = {
             const success = window.MapHandler.init();
             if (!success) {
                 console.error('MapHandler initialization failed');
+                this.showNotification('地图初始化失败', 'error');
                 return;
             }
         }
@@ -62,8 +79,13 @@ const App = {
         this.populateCitySelect();
         this.setupEventListeners();
 
+        // 初始化图表管理器
         if (window.ChartManager && typeof window.ChartManager.init === 'function') {
-            window.ChartManager.init();
+            try {
+                window.ChartManager.init();
+            } catch (e) {
+                console.error('ChartManager init error:', e);
+            }
         }
 
         this.initialized = true;
@@ -99,7 +121,7 @@ const App = {
 
         const grouped = {};
         window.CitiesData.forEach(city => {
-            if (!city || !city.country) return;
+            if (!city || !city.country || !city.name) return;
             if (!grouped[city.country]) {
                 grouped[city.country] = [];
             }
@@ -143,6 +165,7 @@ const App = {
     setupEventListeners() {
         console.log('Setting up event listeners...');
 
+        // 武器类型选择
         const weaponTypeSelect = document.getElementById('weaponType');
         if (weaponTypeSelect) {
             const updateWeaponInfo = (weaponKey) => {
@@ -175,6 +198,7 @@ const App = {
             updateWeaponInfo(weaponTypeSelect.value);
         }
 
+        // 城市选择
         const citySelect = document.getElementById('citySelect');
         if (citySelect) {
             citySelect.addEventListener('change', (e) => {
@@ -185,6 +209,7 @@ const App = {
             });
         }
 
+        // 城市搜索
         const searchInput = document.getElementById('searchCity');
         const searchResults = document.getElementById('searchResults');
 
@@ -227,6 +252,12 @@ const App = {
             });
         }
 
+        // 运行模拟按钮
+        const runBtn = document.getElementById('runSimulationBtn');
+        if (runBtn) {
+            runBtn.addEventListener('click', () => this.runSimulation());
+        }
+
         console.log('Event listeners set up');
     },
 
@@ -235,8 +266,8 @@ const App = {
 
         const q = query.toLowerCase();
         return window.CitiesData.filter(city =>
-            city.name.toLowerCase().includes(q) ||
-            city.country.toLowerCase().includes(q)
+            city && city.name && city.name.toLowerCase().includes(q) ||
+            city && city.country && city.country.toLowerCase().includes(q)
         ).slice(0, 10);
     },
 
@@ -268,14 +299,9 @@ const App = {
     jumpToCity(cityName) {
         console.log('Jumping to city:', cityName);
 
-        if (!window.CitiesData) {
+        if (!window.CitiesData || !Array.isArray(window.CitiesData)) {
             console.error('CitiesData not available');
             this.showNotification('城市数据未加载', 'error');
-            return;
-        }
-
-        if (!Array.isArray(window.CitiesData)) {
-            console.error('CitiesData is not an array');
             return;
         }
 
@@ -288,6 +314,7 @@ const App = {
 
         if (!window.MapHandler) {
             console.error('MapHandler not available');
+            this.showNotification('地图处理器未加载', 'error');
             return;
         }
 
@@ -298,6 +325,7 @@ const App = {
 
         window.MapHandler.selectCity(city);
 
+        // 更新选择框
         const citySelect = document.getElementById('citySelect');
         if (citySelect) {
             citySelect.value = cityName;
@@ -329,30 +357,35 @@ const App = {
         const weaponType = document.getElementById('weaponType')?.value;
 
         if (weaponType === 'custom') {
-            return parseFloat(document.getElementById('customYield')?.value) || 100;
+            const customYield = parseFloat(document.getElementById('customYield')?.value);
+            return isNaN(customYield) || customYield <= 0 ? 100 : customYield;
         }
 
         return window.NuclearCalculator?.weaponPresets?.[weaponType]?.yield || 100;
     },
 
     runSimulation() {
+        // 检查地图处理器
         if (!window.MapHandler) {
             console.error('MapHandler not available');
             this.showNotification('地图处理器未加载', 'error');
             return;
         }
 
+        // 检查是否选择了目标
         if (!window.MapHandler.selectedCoords) {
             this.showNotification('请先在地图上选择目标位置！', 'warning');
             return;
         }
 
+        // 检查核计算器
         if (!window.NuclearCalculator) {
             console.error('NuclearCalculator not available');
             this.showNotification('计算引擎未加载', 'error');
             return;
         }
 
+        // 获取参数
         const weaponTypeEl = document.getElementById('weaponType');
         const customYieldEl = document.getElementById('customYield');
         const populationEl = document.getElementById('population');
@@ -365,9 +398,10 @@ const App = {
         const timeOfDay = timeOfDayEl ? timeOfDayEl.value : 'day';
         const burstHeight = burstHeightEl ? burstHeightEl.value : 'air';
 
+        // 计算当量
         let yieldKt;
         if (weaponType === 'custom') {
-            yieldKt = isNaN(customYield) ? 100 : customYield;
+            yieldKt = isNaN(customYield) || customYield <= 0 ? 100 : customYield;
         } else {
             yieldKt = window.NuclearCalculator.weaponPresets?.[weaponType]?.yield || 100;
         }
@@ -380,12 +414,14 @@ const App = {
         console.log('Running simulation with yield:', yieldKt, 'kt');
 
         try {
+            // 计算结果
             const results = window.NuclearCalculator.calculate(yieldKt, burstHeight);
             
             if (!results) {
                 throw new Error('Calculation returned null');
             }
 
+            // 计算伤亡
             const casualties = window.NuclearCalculator.estimateCasualties(
                 results,
                 populationDensity,
@@ -393,26 +429,32 @@ const App = {
                 timeOfDay
             );
 
+            // 计算长期影响
             const longTerm = window.NuclearCalculator.calculateLongTermEffects 
                 ? window.NuclearCalculator.calculateLongTermEffects(results, this.currentCountryData)
                 : { recoveryTime: { years: 10 } };
 
+            // 计算基础设施影响
             const infrastructure = window.NuclearCalculator.calculateInfrastructureImpact 
                 ? window.NuclearCalculator.calculateInfrastructureImpact(results, populationDensity, this.currentCountryData)
                 : { hospitals: 0, schools: 0, transport: 0, power: 0, details: { hospitalBeds: 0, schoolCapacity: 0, transportCapacity: 0, powerCapacity: 0 } };
 
+            // 计算环境影响
             const environment = window.NuclearCalculator.calculateEnvironmentImpact 
                 ? window.NuclearCalculator.calculateEnvironmentImpact(results, this.currentCountryData)
                 : { falloutArea: 0, landContamination: 0, waterAffected: 0, carbonEmission: 0, radiationLevel: 0, landPollution: 0, waterPollution: 0, airPollution: 0, ecologyDamage: 0 };
 
+            // 计算健康影响
             const health = window.NuclearCalculator.calculateHealthImpact 
                 ? window.NuclearCalculator.calculateHealthImpact(results, casualties, this.currentCountryData)
                 : { acuteRadiation: 0, burns: 0, trauma: 0, psychological: 0, homeless: 0, cancerProjection: [0,0,0,0,0], geneticProjection: [0,0,0,0,0], chronicProjection: [0,0,0,0,0] };
 
+            // 计算 GDP 损失
             const gdpLoss = window.NuclearCalculator.calculateGDPLoss 
                 ? window.NuclearCalculator.calculateGDPLoss(results, casualties, this.currentCountryData)
                 : { total: 0, direct: 0, indirect: 0, gdpPerCapitaLoss: 0 };
 
+            // 保存结果
             this.lastSimulationResult = {
                 targetName: document.getElementById('targetName')?.textContent || '未知',
                 lat: window.MapHandler.selectedCoords.lat,
@@ -431,9 +473,13 @@ const App = {
                 health: health
             };
 
+            // 显示结果
             this.displayResults(results, casualties, gdpLoss, longTerm, infrastructure, environment, health);
+            
+            // 绘制影响圈
             window.MapHandler.drawImpactCircles(results);
 
+            // 切换到结果标签
             if (typeof toggleTool === 'function') {
                 toggleTool('results');
             }
@@ -446,13 +492,14 @@ const App = {
     },
 
     displayResults(results, casualties, gdpLoss, longTerm, infrastructure, environment, health) {
+        // 更新基础数据
         const elements = {
-            fireballRadius: results.fireball.toFixed(2),
-            heavyBlastRadius: results.heavyBlast.toFixed(2),
-            moderateBlastRadius: results.moderateBlast.toFixed(2),
-            thermalRadius: results.thermal.toFixed(2),
-            deaths: window.NuclearCalculator.formatNumber(casualties.deaths),
-            injuries: window.NuclearCalculator.formatNumber(casualties.injuries)
+            fireballRadius: results.fireball?.toFixed(2) || '0.00',
+            heavyBlastRadius: results.heavyBlast?.toFixed(2) || '0.00',
+            moderateBlastRadius: results.moderateBlast?.toFixed(2) || '0.00',
+            thermalRadius: results.thermal?.toFixed(2) || '0.00',
+            deaths: window.NuclearCalculator?.formatNumber(casualties.deaths) || casualties.deaths.toLocaleString(),
+            injuries: window.NuclearCalculator?.formatNumber(casualties.injuries) || casualties.injuries.toLocaleString()
         };
 
         Object.keys(elements).forEach(id => {
@@ -460,11 +507,13 @@ const App = {
             if (el) el.textContent = elements[id];
         });
 
+        // 更新各标签页
         this.updateEconomicTab(gdpLoss, longTerm);
         this.updateInfrastructureTab(infrastructure);
         this.updateEnvironmentTab(environment);
         this.updateHealthTab(health);
 
+        // 渲染图表
         if (window.ChartManager) {
             setTimeout(() => {
                 try {
@@ -472,7 +521,7 @@ const App = {
                     window.ChartManager.renderCasualtyPieChart(casualties);
                     window.ChartManager.renderRadiusBarChart(results);
                     window.ChartManager.renderEconomicBarChart(gdpLoss, this.currentCountryData?.gdpPerCapita);
-                    window.ChartManager.renderRecoveryTimelineChart(longTerm.recoveryTime.years);
+                    window.ChartManager.renderRecoveryTimelineChart(longTerm.recoveryTime?.years || 10);
                     window.ChartManager.renderInfrastructureChart(infrastructure);
                     window.ChartManager.renderEnvironmentChart(environment);
                     window.ChartManager.renderHealthChart(health);
@@ -486,11 +535,11 @@ const App = {
 
     updateEconomicTab(gdpLoss, longTerm) {
         const elements = {
-            gdpLossTotal: this.formatCurrency(gdpLoss.total),
-            directLoss: this.formatCurrency(gdpLoss.direct),
-            indirectLoss: this.formatCurrency(gdpLoss.indirect),
-            gdpPerCapitaLoss: this.formatCurrency(gdpLoss.gdpPerCapitaLoss),
-            recoveryTime: longTerm.years + ' 年'
+            gdpLossTotal: this.formatCurrency(gdpLoss?.total || 0),
+            directLoss: this.formatCurrency(gdpLoss?.direct || 0),
+            indirectLoss: this.formatCurrency(gdpLoss?.indirect || 0),
+            gdpPerCapitaLoss: this.formatCurrency(gdpLoss?.gdpPerCapitaLoss || 0),
+            recoveryTime: (longTerm?.years || 10) + ' 年'
         };
 
         Object.keys(elements).forEach(id => {
@@ -501,10 +550,10 @@ const App = {
 
     updateInfrastructureTab(infrastructure) {
         const elements = {
-            hospitalsAffected: infrastructure.hospitals + ' 座',
-            schoolsAffected: infrastructure.schools + ' 座',
-            transportAffected: infrastructure.transport + ' 个',
-            powerAffected: infrastructure.power + ' 座'
+            hospitalsAffected: (infrastructure?.hospitals || 0) + ' 座',
+            schoolsAffected: (infrastructure?.schools || 0) + ' 座',
+            transportAffected: (infrastructure?.transport || 0) + ' 个',
+            powerAffected: (infrastructure?.power || 0) + ' 座'
         };
 
         Object.keys(elements).forEach(id => {
@@ -513,7 +562,7 @@ const App = {
         });
 
         const infrastructureDetails = document.getElementById('infrastructureDetails');
-        if (infrastructureDetails && infrastructure.details) {
+        if (infrastructureDetails && infrastructure?.details) {
             infrastructureDetails.innerHTML = `
                 <strong>详细影响:</strong><br>
                 • 医院床位损失: ${(infrastructure.details.hospitalBeds || 0).toLocaleString()} 张<br>
@@ -526,10 +575,10 @@ const App = {
 
     updateEnvironmentTab(environment) {
         const elements = {
-            falloutArea: (environment.falloutArea || 0).toFixed(1) + ' km²',
-            landContamination: (environment.landContamination || 0).toFixed(1) + ' km²',
-            waterAffected: this.formatNumber((environment.waterAffected || 0) * 1000) + ' 人',
-            carbonEmission: this.formatNumber(environment.carbonEmission || 0) + ' 吨CO₂当量'
+            falloutArea: (environment?.falloutArea || 0).toFixed(1) + ' km²',
+            landContamination: (environment?.landContamination || 0).toFixed(1) + ' km²',
+            waterAffected: this.formatNumber((environment?.waterAffected || 0) * 1000) + ' 人',
+            carbonEmission: this.formatNumber(environment?.carbonEmission || 0) + ' 吨CO₂当量'
         };
 
         Object.keys(elements).forEach(id => {
@@ -539,12 +588,12 @@ const App = {
     },
 
     updateHealthTab(health) {
-        const cancerProj = health.cancerProjection || [0, 0, 0, 0, 0];
+        const cancerProj = health?.cancerProjection || [0, 0, 0, 0, 0];
         const elements = {
-            acuteRadiation: this.formatNumber(health.acuteRadiation || 0) + ' 人',
+            acuteRadiation: this.formatNumber(health?.acuteRadiation || 0) + ' 人',
             cancerIncrease: this.formatNumber(cancerProj[4] || 0) + ' 人',
-            psychologicalTrauma: this.formatNumber(health.psychological || 0) + ' 人',
-            homeless: this.formatNumber(health.homeless || 0) + ' 人'
+            psychologicalTrauma: this.formatNumber(health?.psychological || 0) + ' 人',
+            homeless: this.formatNumber(health?.homeless || 0) + ' 人'
         };
 
         Object.keys(elements).forEach(id => {
@@ -554,6 +603,7 @@ const App = {
     },
 
     formatNumber(num) {
+        if (typeof num !== 'number' || isNaN(num)) return '0';
         if (num >= 1e9) return (num / 1e9).toFixed(2) + '十亿';
         if (num >= 1e8) return (num / 1e8).toFixed(2) + '亿';
         if (num >= 1e6) return (num / 1e6).toFixed(2) + '百万';
@@ -562,6 +612,7 @@ const App = {
     },
 
     formatCurrency(value) {
+        if (typeof value !== 'number' || isNaN(value)) return '$0';
         if (value >= 1e12) return '$' + (value / 1e12).toFixed(2) + '万亿';
         if (value >= 1e9) return '$' + (value / 1e9).toFixed(2) + '十亿';
         if (value >= 1e6) return '$' + (value / 1e6).toFixed(2) + '百万';
@@ -584,9 +635,16 @@ const App = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded');
+// 等待 DOM 加载完成后初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM Content Loaded');
+        App.init();
+    });
+} else {
+    // DOM 已经加载完成
+    console.log('DOM already loaded');
     App.init();
-});
+}
 
 window.App = App;
