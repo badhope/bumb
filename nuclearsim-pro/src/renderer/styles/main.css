@@ -778,3 +778,150 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-primary);
 }
+
+.leaflet-container {
+    background: var(--bg-primary);
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+.leaflet-control-zoom {
+    border: 1px solid var(--border-color) !important;
+    background: var(--bg-secondary) !important;
+}
+
+.leaflet-control-zoom a {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: var(--bg-hover) !important;
+}
+
+.leaflet-control-layers {
+    border: 1px solid var(--border-color) !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.leaflet-control-layers-toggle {
+    background-color: var(--bg-secondary) !important;
+}
+
+.leaflet-control-layers-expanded {
+    padding: 10px !important;
+}
+
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label {
+    color: var(--text-primary) !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.leaflet-popup-tip {
+    background: var(--bg-secondary) !important;
+}
+
+.leaflet-popup-close-button {
+    color: var(--text-secondary) !important;
+}
+
+.leaflet-popup-close-button:hover {
+    color: var(--accent-primary) !important;
+}
+
+.target-marker {
+    background: transparent;
+    border: none;
+}
+
+.target-cross {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--accent-primary);
+    text-shadow: 0 0 5px var(--accent-primary);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.city-marker {
+    background: var(--accent-info);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.city-marker:hover {
+    transform: scale(1.5);
+    background: var(--accent-primary);
+}
+
+.city-cluster {
+    background: transparent;
+}
+
+.cluster-icon {
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+}
+
+.military-marker {
+    background: var(--accent-warning);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    cursor: pointer;
+}
+
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+    background: transparent !important;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+    background: var(--accent-primary) !important;
+    color: white !important;
+}
+
+.leaflet-interactive {
+    cursor: crosshair !important;
+}
+
+.leaflet-grab {
+    cursor: grab !important;
+}
+
+.leaflet-dragging .leaflet-grab {
+    cursor: grabbing !important;
+}

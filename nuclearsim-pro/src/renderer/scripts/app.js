@@ -245,7 +245,7 @@ async function startSimulation() {
             yieldKt = 100;
         }
         
-        const results = window.NuclearCalculator.calculateEffects(yieldKt, burstHeight);
+        const results = window.NuclearCalculator.calculate(yieldKt, burstHeight);
         
         const locationName = mapHandler.selectedCity?.name || '自定义位置';
         const populationDensity = (mapHandler.selectedCity?.density || 1000) * densityMultiplier;
@@ -624,15 +624,60 @@ async function exportImage() {
 }
 
 function loadEvent(eventId) {
-    showNotification(`加载事件: ${eventId}`, 'info');
+    const events = {
+        'hiroshima': {
+            name: '广岛',
+            lat: 34.3853,
+            lng: 132.4553,
+            weapon: 'littleBoy',
+            yield: 15
+        },
+        'nagasaki': {
+            name: '长崎',
+            lat: 32.7503,
+            lng: 129.8777,
+            weapon: 'fatMan',
+            yield: 21
+        },
+        'cuban': {
+            name: '哈瓦那',
+            lat: 23.1136,
+            lng: -82.3666,
+            weapon: 'w87',
+            yield: 300
+        },
+        'chernobyl': {
+            name: '切尔诺贝利',
+            lat: 51.3865,
+            lng: 30.0956,
+            weapon: 'custom',
+            yield: 0.01
+        }
+    };
+    
+    const event = events[eventId];
+    if (event && mapHandler) {
+        mapHandler.goToLocation(event.lat, event.lng, event.name);
+        document.getElementById('weaponType').value = event.weapon;
+        if (event.weapon === 'custom') {
+            document.getElementById('customYieldGroup').style.display = 'block';
+            document.getElementById('customYield').value = event.yield;
+        }
+        showNotification(`已加载历史事件: ${event.name}`, 'success');
+    }
 }
 
 function loadStory(storyId) {
-    showNotification(`加载故事: ${storyId}`, 'info');
+    showNotification(`交互式故事功能开发中: ${storyId}`, 'info');
 }
 
 function openArticle(articleId) {
-    showNotification(`打开文章: ${articleId}`, 'info');
+    const articles = {
+        'nuclear_basics': '核武器基础原理',
+        'effects': '核爆炸效应',
+        'radiation': '辐射与健康'
+    };
+    showNotification(`打开文章: ${articles[articleId] || articleId}`, 'info');
 }
 
 function startTutorial(tutorialId) {
@@ -640,35 +685,115 @@ function startTutorial(tutorialId) {
 }
 
 function startQuiz() {
-    showNotification('开始测验', 'info');
+    showNotification('测验功能开发中', 'info');
 }
 
 async function exportData() {
-    showNotification('正在导出数据...', 'info');
+    try {
+        const simulations = await window.electronAPI.db.all(
+            'SELECT * FROM simulations ORDER BY created_at DESC'
+        );
+        
+        const dataStr = JSON.stringify(simulations, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nuclearsim_export_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        showNotification('数据已导出', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showNotification('导出失败: ' + error.message, 'error');
+    }
 }
 
 async function importData() {
-    showNotification('请选择数据文件', 'info');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            
+            if (!Array.isArray(data)) {
+                throw new Error('无效的数据格式');
+            }
+            
+            for (const sim of data) {
+                await window.electronAPI.db.run(
+                    `INSERT INTO simulations (name, weapon_type, yield_kt, location_lat, location_lng, location_name, burst_height, results)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [sim.name, sim.weapon_type, sim.yield_kt, sim.location_lat, sim.location_lng, sim.location_name, sim.burst_height, sim.results]
+                );
+            }
+            
+            await loadHistory();
+            showNotification(`已导入 ${data.length} 条记录`, 'success');
+        } catch (error) {
+            console.error('Import error:', error);
+            showNotification('导入失败: ' + error.message, 'error');
+        }
+    };
+    
+    input.click();
 }
 
 async function clearData() {
-    showNotification('数据已清除', 'success');
+    if (!confirm('确定要清除所有历史记录吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    try {
+        await window.electronAPI.db.run('DELETE FROM simulations');
+        await loadHistory();
+        showNotification('数据已清除', 'success');
+    } catch (error) {
+        console.error('Clear error:', error);
+        showNotification('清除失败: ' + error.message, 'error');
+    }
 }
 
 function setTool(tool) {
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    showNotification(`工具: ${tool}`, 'info');
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    if (mapHandler) {
+        mapHandler.currentTool = tool;
+    }
+    
+    const toolNames = {
+        'select': '选择',
+        'marker': '标记',
+        'measure': '测量',
+        'draw': '绘图'
+    };
+    showNotification(`工具: ${toolNames[tool] || tool}`, 'info');
 }
 
 function toggleMilitaryBases() {
-    if (mapHandler) {
-        mapHandler.toggleMilitaryBases();
+    if (mapHandler && typeof mapHandler.toggleMilitaryBases === 'function') {
+        const visible = mapHandler.toggleMilitaryBases();
+        showNotification(visible ? '军事基地已显示' : '军事基地已隐藏', 'info');
     }
 }
 
 function toggleLayers() {
-    showNotification('图层管理', 'info');
+    const layerControl = document.querySelector('.leaflet-control-layers');
+    if (layerControl) {
+        layerControl.click();
+    }
+    showNotification('请使用右上角图层控制', 'info');
 }
 
 function setupUpdateListener() {

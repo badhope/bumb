@@ -534,6 +534,57 @@ const MapHandler = {
             city.name.toLowerCase().includes(q) ||
             city.country.toLowerCase().includes(q)
         ).slice(0, 10);
+    },
+
+    toggleMilitaryBases() {
+        if (!this.map || !this.militaryMarkers) return;
+        
+        this.showMilitaryBases = !this.showMilitaryBases;
+        
+        if (this.showMilitaryBases) {
+            this.militaryMarkers.addTo(this.map);
+        } else {
+            this.map.removeLayer(this.militaryMarkers);
+        }
+        
+        return this.showMilitaryBases;
+    },
+
+    clearSelection() {
+        if (this.targetMarker && this.map) {
+            this.map.removeLayer(this.targetMarker);
+            this.targetMarker = null;
+        }
+        this.selectedCoords = null;
+        this.selectedCity = null;
+        this.clearImpactCircles();
+        
+        const latEl = document.getElementById('coordsLat');
+        const lngEl = document.getElementById('coordsLng');
+        if (latEl) latEl.textContent = '--';
+        if (lngEl) lngEl.textContent = '--';
+    },
+
+    async captureScreenshot() {
+        if (!this.map) return null;
+        
+        return new Promise((resolve) => {
+            if (typeof L.simpleMapScreenshoter !== 'undefined') {
+                this.map.once('rendercomplete', () => {
+                    const canvas = document.querySelector('.leaflet-container canvas');
+                    if (canvas) {
+                        resolve(canvas.toDataURL('image/png'));
+                    } else {
+                        resolve(null);
+                    }
+                });
+            } else {
+                const container = document.getElementById('map');
+                if (container) {
+                    resolve(null);
+                }
+            }
+        });
     }
 };
 
