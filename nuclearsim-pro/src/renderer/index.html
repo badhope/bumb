@@ -250,8 +250,43 @@
                             <select id="mapSource">
                                 <option value="amap">高德地图</option>
                                 <option value="geoq">GeoQ</option>
-                                <option value="offline">离线地图</option>
+                                <option value="osm">OpenStreetMap</option>
+                                <option value="carto">CartoDB</option>
+                                <option value="esri">Esri卫星</option>
                             </select>
+                        </div>
+                        
+                        <h3>📥 离线地图</h3>
+                        <div class="offline-map-section">
+                            <div class="setting-item">
+                                <label>下载区域</label>
+                                <select id="offlineRegion">
+                                    <option value="china">中国</option>
+                                    <option value="asia">亚洲</option>
+                                    <option value="europe">欧洲</option>
+                                    <option value="america">美洲</option>
+                                    <option value="world">全球</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label>缩放级别</label>
+                                <select id="offlineZoom">
+                                    <option value="1-5">1-5 (概览)</option>
+                                    <option value="1-10">1-10 (区域)</option>
+                                    <option value="1-15">1-15 (详细)</option>
+                                </select>
+                            </div>
+                            <button class="data-btn" onclick="downloadOfflineMap()">📥 下载离线地图</button>
+                            <div id="offlineProgress" class="offline-progress" style="display: none;">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="offlineProgressBar"></div>
+                                </div>
+                                <span id="offlineProgressText">0%</span>
+                            </div>
+                            <div class="cache-info">
+                                <span>缓存大小: <span id="cacheSize">计算中...</span></span>
+                                <button class="data-btn small" onclick="clearMapCache()">清除缓存</button>
+                            </div>
                         </div>
 
                         <h3>⌨️ 快捷键</h3>
@@ -353,6 +388,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+    <script src="scripts/offline-map.js"></script>
+    <script src="scripts/explosion-effects.js"></script>
     <script src="scripts/nuclear.js"></script>
     <script src="scripts/cities.js"></script>
     <script src="scripts/country-data.js"></script>

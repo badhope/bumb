@@ -10,6 +10,8 @@ const MapHandler = {
     initialized: false,
     initAttempts: 0,
     maxInitAttempts: 5,
+    currentBaseLayer: null,
+    layers: {},
     
     init() {
         if (this.initialized) {
@@ -46,41 +48,10 @@ const MapHandler = {
                 zoomControl: true
             });
 
-            const gaodeLayer = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-                subdomains: ['1', '2', '3', '4'],
-                attribution: '&copy; 高德地图',
-                maxZoom: 18
-            });
+            this.createLayers();
 
-            const gaodeSatellite = L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
-                subdomains: ['1', '2', '3', '4'],
-                attribution: '&copy; 高德地图',
-                maxZoom: 18
-            });
-
-            const gaodeSatelliteLabel = L.layerGroup([
-                gaodeSatellite,
-                L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}', {
-                    subdomains: ['1', '2', '3', '4']
-                })
-            ]);
-
-            const geoqLayer = L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineCommunity/MapServer/tile/{z}/{y}/{x}', {
-                attribution: '&copy; GeoQ',
-                maxZoom: 16
-            });
-
-            const geoqDarkLayer = L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplish/MapServer/tile/{z}/{y}/{x}', {
-                attribution: '&copy; GeoQ',
-                maxZoom: 16
-            });
-
-            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap',
-                maxZoom: 18
-            });
-
-            gaodeLayer.addTo(this.map);
+            this.layers.gaode.addTo(this.map);
+            this.currentBaseLayer = this.layers.gaode;
 
             if (typeof L.markerClusterGroup === 'function') {
                 this.cityMarkers = L.markerClusterGroup({
@@ -104,11 +75,15 @@ const MapHandler = {
             this.militaryMarkers = L.layerGroup();
 
             const baseLayers = {
-                '高德地图': gaodeLayer,
-                '高德卫星': gaodeSatelliteLabel,
-                'GeoQ 彩色版': geoqLayer,
-                'GeoQ 深色版': geoqDarkLayer,
-                'OpenStreetMap': osmLayer
+                '高德地图': this.layers.gaode,
+                '高德卫星': this.layers.gaodeSatellite,
+                'GeoQ 彩色版': this.layers.geoq,
+                'GeoQ 深色版': this.layers.geoqDark,
+                'OpenStreetMap': this.layers.osm,
+                'CartoDB 暗色': this.layers.cartoDark,
+                'CartoDB 亮色': this.layers.cartoLight,
+                'Esri 卫星': this.layers.esri,
+                'Esri 街道': this.layers.esriStreet
             };
 
             const overlayLayers = {
@@ -137,6 +112,69 @@ const MapHandler = {
             console.error('MapHandler initialization error:', error);
             return false;
         }
+    },
+
+    createLayers() {
+        this.layers = {
+            gaode: L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                subdomains: ['1', '2', '3', '4'],
+                attribution: '&copy; 高德地图',
+                maxZoom: 18
+            }),
+            
+            gaodeSatellite: L.layerGroup([
+                L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
+                    subdomains: ['1', '2', '3', '4'],
+                    maxZoom: 18
+                }),
+                L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}', {
+                    subdomains: ['1', '2', '3', '4'],
+                    maxZoom: 18
+                })
+            ]),
+            
+            geoq: L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineCommunity/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; GeoQ',
+                maxZoom: 16
+            }),
+            
+            geoqDark: L.tileLayer('http://map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplish/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; GeoQ',
+                maxZoom: 16
+            }),
+            
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 18
+            }),
+            
+            cartoDark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                subdomains: ['a', 'b', 'c', 'd'],
+                attribution: '&copy; CartoDB',
+                maxZoom: 19
+            }),
+            
+            cartoLight: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                subdomains: ['a', 'b', 'c', 'd'],
+                attribution: '&copy; CartoDB',
+                maxZoom: 19
+            }),
+            
+            esri: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri',
+                maxZoom: 19
+            }),
+            
+            esriStreet: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri',
+                maxZoom: 19
+            }),
+            
+            stamen: L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; Stadia Maps',
+                maxZoom: 18
+            })
+        };
     },
 
     createTargetIcon() {
@@ -512,6 +550,53 @@ const MapHandler = {
             const bounds = L.circle([lat, lng], { radius: maxRadius * 1000 }).getBounds();
             this.map.fitBounds(bounds, { padding: [50, 50] });
         }
+        
+        this.playExplosionEffect(lat, lng, results.fireball || 0.5);
+    },
+    
+    playExplosionEffect(lat, lng, scale) {
+        if (window.ExplosionEffects) {
+            window.ExplosionEffects.createMapExplosion(this.map, lat, lng, scale * 100);
+        }
+        
+        const explosionIcon = L.divIcon({
+            className: 'explosion-animation',
+            html: `
+                <div style="
+                    width: 80px;
+                    height: 80px;
+                    position: relative;
+                    animation: explosionPulse 1s ease-out forwards;
+                ">
+                    <div style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 20px;
+                        height: 20px;
+                        background: radial-gradient(circle, #fff 0%, #ff0 30%, #f80 60%, #f00 100%);
+                        border-radius: 50%;
+                        animation: explosionGrow 0.8s ease-out forwards;
+                    "></div>
+                </div>
+                <style>
+                    @keyframes explosionGrow {
+                        0% { width: 20px; height: 20px; opacity: 1; }
+                        50% { width: 60px; height: 60px; opacity: 0.8; }
+                        100% { width: 80px; height: 80px; opacity: 0; }
+                    }
+                </style>
+            `,
+            iconSize: [80, 80],
+            iconAnchor: [40, 40]
+        });
+        
+        const marker = L.marker([lat, lng], { icon: explosionIcon }).addTo(this.map);
+        
+        setTimeout(() => {
+            this.map.removeLayer(marker);
+        }, 1000);
     },
 
     clearImpactCircles() {

@@ -466,6 +466,51 @@ function drawImpactCircle(detonation) {
     const results = detonation.results;
     const coords = detonation.coords;
     
+    if (window.ExplosionEffects) {
+        window.ExplosionEffects.createMapExplosion(map, coords.lat, coords.lng, detonation.yield);
+    }
+    
+    const explosionIcon = L.divIcon({
+        className: 'explosion-animation',
+        html: `
+            <div style="
+                width: 60px;
+                height: 60px;
+                position: relative;
+            ">
+                <div style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 15px;
+                    height: 15px;
+                    background: radial-gradient(circle, #fff 0%, #ff0 30%, #f80 60%, #f00 100%);
+                    border-radius: 50%;
+                    animation: explosionGrow 0.6s ease-out forwards;
+                "></div>
+            </div>
+            <style>
+                @keyframes explosionGrow {
+                    0% { width: 15px; height: 15px; opacity: 1; }
+                    50% { width: 50px; height: 50px; opacity: 0.8; }
+                    100% { width: 60px; height: 60px; opacity: 0; }
+                }
+            </style>
+        `,
+        iconSize: [60, 60],
+        iconAnchor: [30, 30]
+    });
+    
+    const explosionMarker = L.marker([coords.lat, coords.lng], { icon: explosionIcon }).addTo(map);
+    markers.impacts.push(explosionMarker);
+    
+    setTimeout(() => {
+        try {
+            map.removeLayer(explosionMarker);
+        } catch (e) {}
+    }, 700);
+    
     const circles = [
         { radius: results.fireball, color: '#ff0000', opacity: 0.6 },
         { radius: results.heavyBlast, color: '#ff4500', opacity: 0.5 },

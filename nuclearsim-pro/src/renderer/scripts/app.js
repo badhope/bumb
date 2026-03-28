@@ -1,16 +1,6 @@
 let mapHandler = null;
 let currentResults = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('NuclearSim Pro initializing...');
-    
-    await initApp();
-    setupEventListeners();
-    await loadHistory();
-    
-    console.log('NuclearSim Pro initialized successfully');
-});
-
 async function initApp() {
     try {
         const version = await window.electronAPI.app.getVersion();
@@ -927,3 +917,135 @@ window.App = {
     showNotification,
     showLoading
 };
+
+async function initOfflineMapManager() {
+    if (window.OfflineMapManager) {
+        await window.OfflineMapManager.init();
+        updateCacheSize();
+    }
+}
+
+async function updateCacheSize() {
+    if (!window.OfflineMapManager) return;
+    
+    try {
+        const stats = await window.OfflineMapManager.getCacheStats();
+        const sizeEl = document.getElementById('cacheSize');
+        if (sizeEl) {
+            sizeEl.textContent = `${stats.sizeMB} MB (${stats.count} 个瓦片)`;
+        }
+    } catch (error) {
+        console.error('Failed to get cache stats:', error);
+    }
+}
+
+async function downloadOfflineMap() {
+    if (!window.OfflineMapManager) {
+        showNotification('离线地图管理器未加载', 'error');
+        return;
+    }
+    
+    const region = document.getElementById('offlineRegion').value;
+    const zoomRange = document.getElementById('offlineZoom').value;
+    const [minZoom, maxZoom] = zoomRange.split('-').map(Number);
+    
+    const regions = {
+        china: { north: 55, south: 15, east: 140, west: 70 },
+        asia: { north: 70, south: -10, east: 180, west: 25 },
+        europe: { north: 72, south: 35, east: 60, west: -25 },
+        america: { north: 72, south: -56, east: -25, west: -170 },
+        world: { north: 85, south: -85, east: 180, west: -180 }
+    };
+    
+    const bounds = regions[region];
+    if (!bounds) {
+        showNotification('无效的区域', 'error');
+        return;
+    }
+    
+    const progressEl = document.getElementById('offlineProgress');
+    const progressBar = document.getElementById('offlineProgressBar');
+    const progressText = document.getElementById('offlineProgressText');
+    
+    progressEl.style.display = 'flex';
+    
+    showNotification('开始下载离线地图...', 'info');
+    
+    try {
+        await window.OfflineMapManager.downloadRegion('gaode', bounds, minZoom, maxZoom, (progress) => {
+            const percent = Math.round(progress.progress * 100);
+            progressBar.style.width = percent + '%';
+            progressText.textContent = `${percent}% (${progress.downloaded}/${progress.total})`;
+        });
+        
+        showNotification('离线地图下载完成', 'success');
+        updateCacheSize();
+    } catch (error) {
+        console.error('Download error:', error);
+        showNotification('下载失败: ' + error.message, 'error');
+    } finally {
+        setTimeout(() => {
+            progressEl.style.display = 'none';
+        }, 2000);
+    }
+}
+
+async function clearMapCache() {
+    if (!window.OfflineMapManager) return;
+    
+    if (!confirm('确定要清除所有地图缓存吗？')) return;
+    
+    try {
+        await window.OfflineMapManager.clearCache();
+        showNotification('地图缓存已清除', 'success');
+        updateCacheSize();
+    } catch (error) {
+        console.error('Clear cache error:', error);
+        showNotification('清除失败', 'error');
+    }
+}
+
+function changeMapSource(source) {
+    if (!mapHandler || !mapHandler.map) return;
+    
+    const sourceMap = {
+        amap: 'gaode',
+        geoq: 'geoq',
+        osm: 'osm',
+        carto: 'cartoDark',
+        esri: 'esri'
+    };
+    
+    const layerName = sourceMap[source];
+    if (!layerName || !mapHandler.layers[layerName]) return;
+    
+    if (mapHandler.currentBaseLayer) {
+        mapHandler.map.removeLayer(mapHandler.currentBaseLayer);
+    }
+    
+    mapHandler.layers[layerName].addTo(mapHandler.map);
+    mapHandler.currentBaseLayer = mapHandler.layers[layerName];
+    
+    showNotification(`已切换到: ${source}`, 'info');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('NuclearSim Pro initializing...');
+    
+    await initOfflineMapManager();
+    await initApp();
+    setupEventListeners();
+    await loadHistory();
+    
+    const mapSourceSelect = document.getElementById('mapSource');
+    if (mapSourceSelect) {
+        mapSourceSelect.addEventListener('change', (e) => {
+            changeMapSource(e.target.value);
+        });
+    }
+    
+    console.log('NuclearSim Pro initialized successfully');
+});
+
+window.downloadOfflineMap = downloadOfflineMap;
+window.clearMapCache = clearMapCache;
