@@ -491,8 +491,15 @@ const MapHandler = {
         });
 
         const maxRadius = results.lightBlast;
-        if (maxRadius > 0) {
-            const bounds = L.circle([lat, lng], { radius: maxRadius * 1000 }).getBounds();
+        if (maxRadius > 0 && this.map) {
+            // 使用经纬度直接计算边界，而不是依赖 getBounds()
+            const latRad = maxRadius / 111; // 纬度方向
+            const lngRad = maxRadius / (111 * Math.cos(lat * Math.PI / 180)); // 经度方向
+            
+            const bounds = [
+                [lat - latRad, lng - lngRad],
+                [lat + latRad, lng + lngRad]
+            ];
             this.map.fitBounds(bounds, { padding: [50, 50] });
         }
     },
